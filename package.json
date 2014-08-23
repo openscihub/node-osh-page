@@ -1,0 +1,25 @@
+{
+  "name": "revsci-page",
+  "version": "0.0.0",
+  "description": "reviewscience.org: abstract webpage for isomorphic webdev",
+  "main": "index.js",
+  "browser": "lib/browser.js",
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {
+    "dynafetch": "^0.0.3",
+    "expect.js": "^0.3.1",
+    "express": "^4.8.4",
+    "inherits": "^2.0.1",
+    "react": "^0.11.1",
+    "revsci-path": "^0.0.0",
+    "revsci-util": "^0.0.0",
+    "xtend": "^4.0.0"
+  },
+  "scripts": {
+    "test": "mocha -C test/test.js"
+  },
+  "author": "Carl A. Bauer",
+  "license": "ISC"
+}
