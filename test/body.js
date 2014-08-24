@@ -1,4 +1,3 @@
 module.exports = function(props) {
-  console.log(props);
-  return 'body';
+  return 'module body';
 };

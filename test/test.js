@@ -7,7 +7,8 @@ var extend = require('xtend');
 var Dynapack = require('dynapack');
 var React = require('react');
 var request = require('superagent');
-//var supertest = require('supertest');
+var supertest = require('supertest');
+var morgan = require('morgan');
 
 describe('Page', function() {
   var communityPath = {
@@ -66,56 +67,105 @@ describe('Page', function() {
     404: __dirname + '/404.js'
   };
 
-  describe('render()', function() {
+  describe('load()', function() {
     var server;
     
-    before(function(done) {
-      var app = express();
-      app.use(function(req, res, next) {
-        console.log(req.method.toUpperCase() + ':', req.path);
-        next();
+    it('should load a basic page', function(done) {
+      var page = Page({
+        title: 'Title',
+        path: {pattern: '/home'},
+        body: function(props) {return 'body';}
       });
-      app.get('/home.json', function(req, res) {
-        res.send({app: 'test'});
+      page.load({}, function(page) {
+        expect(page.title).to.be('Title');
+        expect(page.body).to.be('body');
+        expect(page.props.uri).to.be('/home');
+        done();
       });
-      app.get('/communities/nurses.json', function(req, res) {
-        res.send({name: 'Nursing community'});
-      });
-      app.get('/communities/nurses/users/tory.json', function(req, res) {
-        res.send({name: 'Tory'});
-      });
-      server = http.createServer(app);
-      server.listen(3333, done);
     });
 
-    it('should render page', function(done) {
-      Page(communityUserPage).render(
-        {
-          host: 'http://localhost:3333',
-          params: {community: 'nurses', user: 'tory'},
-          query: {}
+    it('should load a basic page with a param', function(done) {
+      var page = Page({
+        title: 'Title',
+        path: {
+          pattern: '/<user>',
+          params: {user: /\w+/}
         },
-        function(page) {
-          expect(page.title).to.be('Test page');
-          expect(page.body).to.be('body');
-          done();
-        }
-      );
+        body: function(props) {return props.params.user;}
+      });
+      page.load({params: {user: 'tory'}}, function(page) {
+        expect(page.title).to.be('Title');
+        expect(page.body).to.be('tory');
+        done();
+      });
     });
 
-    it('should return 404 page', function(done) {
-      Page(communityUserPage).render(
-        {
-          host: 'http://localhost:3333',
-          params: {user: ';!@#$', community: 'nurses'}, // Won't match regexp for user.
-          query: {}
+    it('should fetch a body module (server only)', function(done) {
+      var page = Page({
+        title: 'Title',
+        path: {pattern: '/home'},
+        body: __dirname + '/body'
+      });
+      page.load({params: {user: 'tory'}}, function(page) {
+        expect(page.title).to.be('Title');
+        expect(page.body).to.be('module body');
+        done();
+      });
+    });
+
+    it('should load the default 404 page on missing param', function(done) {
+      var page = Page({
+        title: 'User',
+        path: {
+          pattern: '/<user>',
+          params: {user: /\w+/}
         },
-        function(page) {
-          expect(page.title).to.be('Not found');
-          expect(page.body).to.match(/bad param/i);
-          done();
-        }
-      );
+        body: function(props) {return 'body';}
+      });
+      page.load({}, function(page) {
+        expect(page.title).to.be('Not found');
+        expect(page.props.error).to.match(/bad uri/i);
+        done();
+      });
+    });
+
+    it('should load the default 404 page on bad param', function(done) {
+      var page = Page({
+        title: 'User',
+        path: {
+          pattern: '/<user>',
+          params: {user: /\w+/}
+        },
+        body: function(props) {return 'body';}
+      });
+      page.load({user: '!@#$'}, function(page) {
+        expect(page.title).to.be('Not found');
+        expect(page.props.error).to.match(/bad uri/i);
+        done();
+      });
+    });
+
+    it('should load default 404 page on network error', function(done) {
+      var page = Page({
+        title: 'Home',
+        path: {
+          pattern: '/'
+        },
+        data: {
+          user: {
+            path: {
+              pattern: '/home.json',
+              get: true // But really it doesn't exist.
+            }
+          }
+        },
+        body: function(props) {return 'body';}
+      });
+      page.load({}, function(page) {
+        expect(page.title).to.be('Not found');
+        expect(page.props.error).to.match(/ECONNREFUSED/);
+        done();
+      });
     });
 
     after(function() {
@@ -125,6 +175,30 @@ describe('Page', function() {
 
 
   describe('serve()', function() {
+    it('should serve a basic page', function(done) {
+      var page = Page({
+        title: 'Hi',
+        path: {pattern: '/'},
+        body: function(props) {return 'body';}
+      });
+      var app = express();
+      app.use(morgan('combined'));
+      page.serve(app);
+      var request = supertest(app);
+      request.get('/')
+      .expect(200)
+      .expect(new RegExp('<title>Hi</title>'))
+      .expect(new RegExp('body</div>'), done);
+      //.end(function(err, res) {
+      //  if (err) done(err);
+      //  else {
+      //    console.log(res.text);
+      //    done();
+      //  }
+      //});
+    });
+
+
     var api = {
       home: {
         path: {
@@ -161,10 +235,6 @@ describe('Page', function() {
 
 
     var app = express();
-    app.use(function(req, res, next) {
-      console.log(req.method + ' ' + req.path);
-      next();
-    });
 
     for (var name in api) {
       Path(api[name].path).serve(app);
