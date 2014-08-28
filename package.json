@@ -1,27 +1,38 @@
 {
-  "name": "revsci-page",
+  "name": "osh-page",
   "version": "0.0.0",
-  "description": "reviewscience.org: abstract webpage for isomorphic webdev",
+  "description": "openscihub.org: abstract webpage for isomorphic webdev",
   "main": "index.js",
   "browser": "lib/browser.js",
   "directories": {
     "test": "test"
   },
-  "devDependencies": {
+  "dependencies": {
     "dynafetch": "^0.0.3",
-    "expect.js": "^0.3.1",
-    "express": "^4.8.4",
-    "inherits": "^2.0.1",
-    "morgan": "^1.2.3",
-    "react": "^0.11.1",
-    "revsci-path": "^0.0.0",
-    "revsci-util": "^0.0.0",
-    "supertest": "^0.13.0",
+    "escape-html": "^1.0.1",
+    "osh-class": "0.0.0",
+    "osh-path": "^0.0.0",
+    "osh-util": "^0.0.0",
     "xtend": "^4.0.0"
   },
+  "devDependencies": {
+    "async": "^0.9.0",
+    "dynapack": "^0.2.2",
+    "expect.js": "^0.3.1",
+    "express": "^4.8.4",
+    "html": "0.0.7",
+    "minimist": "^1.1.0",
+    "morgan": "^1.2.3",
+    "osh-test-host": "0.0.0",
+    "react": "^0.11.1",
+    "serve-static": "^1.5.3",
+    "superagent": "^0.18.2",
+    "supertest": "^0.13.0"
+  },
   "scripts": {
-    "test": "mocha -C test/test.js"
+    "test": "mocha -C test/test.js",
+    "readme": "node build/template.js README-template.md README.md"
   },
   "author": "Carl A. Bauer",
-  "license": "ISC"
+  "license": "MIT"
 }

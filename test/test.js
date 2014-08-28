@@ -1,75 +1,20 @@
-var Path = require('revsci-path');
+var Path = require('osh-path');
 var Page = require('..');
 var expect = require('expect.js');
 var express = require('express');
 var http = require('http');
 var extend = require('xtend');
 var Dynapack = require('dynapack');
-var React = require('react');
 var request = require('superagent');
 var supertest = require('supertest');
 var morgan = require('morgan');
+var host = require('osh-test-host');
+var async = require('async');
+var serveStatic = require('serve-static');
 
 describe('Page', function() {
-  var communityPath = {
-    pattern: '/communities/<community>',
-    params: {community: /\w+/},
-    get: true
-  };
-
-  var communityPage = {
-    title: 'Community',
-    path: communityPath,
-    data: {
-      community: {
-        path: {
-          pattern: communityPath.pattern + '.json',
-          params: communityPath.params,
-          get: true
-        },
-        req: function() {},
-        res: function() {}
-      }
-    }
-  };
-
-  var userPath = {
-    pattern: '/users/<user>',
-    params: {user: /\w+/},
-    get: true
-  };
-
-  var communityUserPage = {
-    title: 'Test page',
-    path: extend(userPath, {
-      parent: communityPath
-    }),
-    data: extend(
-      communityPage.data,
-      {
-        home: {
-          path: {
-            pattern: '/home.json',
-            get: true
-          }
-        },
-        user: {
-          path: {
-            pattern: userPath.pattern + '.json',
-            params: userPath.params,
-            parent: communityPath,
-            get: true
-          }
-        }
-      }
-    ),
-    body: __dirname + '/body.js' /*js*/,
-    404: __dirname + '/404.js'
-  };
 
   describe('load()', function() {
-    var server;
-    
     it('should load a basic page', function(done) {
       var page = Page({
         title: 'Title',
@@ -167,12 +112,7 @@ describe('Page', function() {
         done();
       });
     });
-
-    after(function() {
-      server && server.close();
-    });
   });
-
 
   describe('serve()', function() {
     it('should serve a basic page', function(done) {
@@ -197,100 +137,91 @@ describe('Page', function() {
       //  }
       //});
     });
-
-
-    var api = {
-      home: {
-        path: {
-          pattern: '/home.json',
-          get: function(req, res) {
-            res.send({app: 'UserApp'});
-          }
-        }
-      },
-      user: {
-        path: {
-          pattern: '/users/<user>.json',
-          params: {user: /\w+/},
-          get: function(req, res) {
-            res.send({upper: req.params.user.toUpperCase()});
-          }
-        }
-      }
-    };
-
-    var userPage = Page({
-      title: function(props) {
-        return props.user.upper + '\'s page';
-      },
-      path: {
-        pattern: '/users/<user>',
-        params: {user: /\w+/}
-      },
-      data: api,
-      body: function(props) {
-        return React.DOM.div(null, JSON.stringify(props));
-      }
-    });
-
-
-    var app = express();
-
-    for (var name in api) {
-      Path(api[name].path).serve(app);
-    }
-    //console.log(JSON.stringify(app._pages));
-
-    userPage.serve({
-      app: app,
-      data: {host: 'localhost:3333'}
-    });
-
-    var server;
-    before(function(done) {
-      server = http.createServer(app);
-      server.listen(3333, done);
-    });
-
-    it('should work', function(done) {
-      request.get('localhost:3333/users/tory')
-      .end(function(err, res) {
-        if (err) done(err);
-        else {
-          console.log(res.text);
-          expect(res.text).to.match(/TORY/);
-          done();
-        }
-      });
-    });
-
-    after(function() {
-      server && server.close();
-    });
   });
 
 
   describe('browser', function() {
+    var path = require('path');
+
+    /**
+     *  Each browser test directory should have an index.js file that
+     *  exports the following object.
+     *
+     *  {
+     *    url: '/test-url',
+     *    paths: [],
+     *    pages: []
+     *  }
+     *
+     */
+
+    var __tests = [
+      'interrupt',
+      'visit',
+      'stash'
+    ];
+
+    var tests = __tests.map(function(__test) {
+      var dir = path.join(__dirname, __test);
+      return extend(require(dir), {
+        dir: dir
+      });
+    });
+
+    /**
+     *  Dynapack a test's javascript.
+     */
+
+    function pack(test, done) {
+      var packer = Dynapack(
+        {main: test.dir + '/index.js'},
+        {
+          output: path.join(test.dir, 'bundles'),
+          prefix: test.url + '/'
+        }
+      );
+
+      packer.run(function() {
+        packer.write(function(err, entryInfo) {
+          if (err) done(err);
+          else {
+            test.entryInfo = entryInfo;
+            test.scripts = entryInfo.main;
+            //console.log(JSON.stringify(entryInfo, null, 2));
+            done();
+          }
+        });
+      });
+    }
+
+    /**
+     *  Attaches test endpoints to Express app.
+     */
+
+    function serve(app, test) {
+      test.paths.forEach(function(path) {
+        path.serve(app);
+      });
+      test.pages.forEach(function(page, index) {
+        page.serve({
+          app: app,
+          scripts: test.scripts
+        });
+      });
+      app.use(
+        test.url,
+        serveStatic(
+          path.join(test.dir, 'bundles')
+        )
+      );
+    }
+
     /**
      *  Bundle stuff.
      */
 
-    var entryInfo;
     before(function(done) {
-      var packer = Dynapack(
-        {
-          home: __dirname + '/app/home-entry.js',
-          user: __dirname + '/app/user-entry.js'
-        },
-        {output: __dirname + '/app/bundles'}
-      );
-      packer.run(function() {
-        packer.write(function(err, _entryInfo) {
-          console.log(JSON.stringify(_entryInfo, null, 2));
-          entryInfo = _entryInfo;
-          done();
-        });
-      });
+      async.each(tests, pack, done);
     });
 
     /**
@@ -298,36 +229,51 @@ describe('Page', function() {
      */
 
     before(function(done) {
-      var user = require('./app/user');
-      var home = require('./app/home');
       var app = express();
 
-      app.use(function(req, res, next) {
-        console.log(req.method.toUpperCase() + ' ' + req.path);
-        next();
-      });
+      app.use(morgan('combined'));
 
-      Page(home.page).serve({
-        app: app,
-        scripts: entryInfo.home
-      });
-      Path(user.data).serve(app);
-      Page(user.page).serve({
-        app: app,
-        data: {host: 'localhost:3333'},
-        scripts: entryInfo.user
-      });
+      tests.forEach(serve.bind(null, app));
 
-      app.get('*.js', function(req, res) {
-        res.sendFile(__dirname + '/app/bundles' + req.path);
+      var i = -1;
+      var results = [];
+      app.get('/', function(req, res) {
+        var result = req.query.result;
+        var nextTest;
+        if (result) {
+          nextTest = tests[++i];
+          results.push(result);
+        }
+        else {
+          i = 0;
+          nextTest = tests[i];
+          results = [];
+        }
+        res.send(
+          '<html><body>' +
+          '<ul>' +
+          results.map(function(result, index) {
+            return '<li>' + tests[index].url + ': ' + result + '</li>';
+          }).join('') +
+          '</ul>' +
+          (
+            nextTest ?
+            '<script>document.location = "' + nextTest.url + '";</script>' :
+            ''
+          ) +
+          '</body></html>'
+        );
       });
 
       server = http.createServer(app);
-      server.listen(3333, done);
+      server.listen(host.port, done);
     });
 
+    /**
+     *  Test stuff.
+     */
 
-    it.only('should complete browser tests', function(done) {
+    it('should complete browser tests', function(done) {
       this.timeout(0);
       console.log('Browser to http://localhost:3333. Ctrl-C to finish.');
       process.on('SIGINT', function() {
