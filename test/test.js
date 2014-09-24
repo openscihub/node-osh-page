@@ -1,5 +1,6 @@
 var Path = require('osh-path');
-var Page = require('..');
+var pages = require('..');
+var Page = pages.Page;
 var expect = require('expect.js');
 var express = require('express');
 var http = require('http');
@@ -11,6 +12,17 @@ var morgan = require('morgan');
 var host = require('osh-test-host');
 var async = require('async');
 var serveStatic = require('serve-static');
+
+describe('pages', function() {
+  it.only('should work', function() {
+    pages.add('home', {
+      path: {pattern: '/home'},
+      renderTitle: function() {return 'title';},
+      renderBody: function(data) {return 'body';}
+    });
+  });
+
+});
 
 describe('Page', function() {
 
@@ -203,6 +215,18 @@ describe('Page', function() {
         path.serve(app);
       });
       test.pages.forEach(function(page, index) {
+        app.get(
+          page.path.regexp,
+          page.path.parse(),
+          function(req, res) {
+            var page = Page(req.params);
+            page.set('scripts', test.scripts);
+            page.render(function(err, html) {
+              res.send(html);
+            });
+          }
+        );
+
         page.serve({
           app: app,
           scripts: test.scripts

@@ -95,6 +95,20 @@ A small mess of html should print to the console that looks something like:
 </html>
 ```
 
+## Discussion
+
+1. A user visits a login page.
+2. AJAX request to api server for access token
+3. Keep token in localstorage.
+4. Close browser.
+5. Reopen browser, visit page.
+6. Retrieve and display public page.
+7. Fetch private versions of data.
+8. Rerender page.
+
+### Session data
+
+Session data should persist across pages.
 
 ## Documentation
 

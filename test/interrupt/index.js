@@ -43,8 +43,9 @@ var userPage = Page({
 });
 
 
-var runPage = Page({
-  title: 'Interrupt test',
+
+var RunPage = Page.extend({
+  renderTitle: 'Interrupt test',
   path: basePath,
   body: function(props) {
     return '';
