@@ -1,17 +1,17 @@
 {
   "name": "osh-page",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "description": "openscihub.org: abstract webpage for isomorphic webdev",
   "main": "index.js",
-  "browser": "lib/browser.js",
+  "browser": "lib/browser-page.js",
   "directories": {
     "test": "test"
   },
   "dependencies": {
     "dynafetch": "^0.0.3",
     "escape-html": "^1.0.1",
-    "osh-class": "0.0.1",
-    "osh-path": "0.0.3",
+    "osh-class": "latest",
+    "osh-path": "latest",
     "osh-util": "^0.0.0",
     "temp": "^0.8.1",
     "xtend": "^4.0.0"
