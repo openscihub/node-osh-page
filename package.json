@@ -1,6 +1,6 @@
 {
   "name": "osh-page",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "openscihub.org: abstract webpage for isomorphic webdev",
   "main": "index.js",
   "browser": "lib/browser-page.js",
